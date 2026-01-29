@@ -23,7 +23,6 @@ variable "db_username" {
 }
 
 #password 는 defualt 값이 없도록 설계 
-
 variable "db_password" {
   type      = string
   sensitive = true
