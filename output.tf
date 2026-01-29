@@ -28,3 +28,11 @@ output "az_a" {
 output "az_b" {
   value = local.az_b
 }
+
+output "db_endpoint" {
+  value = aws_db_instance.mysql.endpoint
+}
+
+output "db_port" {
+  value = aws_db_instance.mysql.port
+}

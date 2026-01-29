@@ -5,8 +5,8 @@ provider "aws" {
 data "aws_region" "current" {}
 
 locals {
-  az_a = "${data.aws_region.current.name}a"
-  az_b = "${data.aws_region.current.name}b"
+    az_a = "${var.region}a"
+    az_b = "${var.region}b"
 
   # 서브넷
   public_a_cidr  = "10.0.1.0/24"
