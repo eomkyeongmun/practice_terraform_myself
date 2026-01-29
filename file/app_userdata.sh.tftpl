@@ -1,0 +1,134 @@
+# files/app_userdata.sh.tftpl  (새 파일)
+#!/bin/bash
+set -eux
+
+########################################
+# 1) 패키지 설치 (AL2023 기준: dnf)
+########################################
+dnf -y update
+dnf -y install httpd php php-mysqlnd php-mysqli php-pdo
+
+systemctl enable httpd
+systemctl start httpd
+
+########################################
+# 2) DB 접속정보를 config.php로 분리
+########################################
+cat > /var/www/html/config.php <<'PHP'
+<?php
+  $DB_HOST = "${db_host}";
+  $DB_USER = "${db_user}";
+  $DB_PASS = "${db_pass}";
+  $DB_NAME = "${db_name}";
+?>
+PHP
+
+########################################
+# 3) index.php (서버 IP 표시 + Insert 페이지 이동)
+########################################
+cat > /var/www/html/index.php <<'PHP'
+<?php
+  $serverip = $_SERVER['SERVER_ADDR'];
+?>
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>WEB</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+    integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+  </head>
+  <body>
+    <div class="jumbotron jumbotron-fluid">
+      <div class="container">
+        <h1 class="display-4">WebServer IP is <?php echo $serverip ?> </h1>
+      </div>
+    </div>
+
+    <div class="container">
+      <h2><p> Connect to Database </p></h2>
+      <button type="button" class="btn btn-primary" onclick="location.href='create.php'">Insert Data</button>
+    </div>
+  </body>
+</html>
+PHP
+
+########################################
+# 4) create.php (입력 폼)
+########################################
+cat > /var/www/html/create.php <<'PHP'
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>WEB</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+    integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+  </head>
+  <body>
+    <div class="jumbotron jumbotron-fluid">
+      <div class="container">
+        <h1 class="display-4"> Input the title and description </h1>
+      </div>
+    </div>
+
+    <div class="container">
+      <form action="process_create.php" method="POST">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" name="title" class="form-control" placeholder="Input Title">
+        </div>
+        <div class="form-group">
+          <label>description</label>
+          <input type="text" name="description" class="form-control" placeholder="Input Description">
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+    </div>
+  </body>
+</html>
+PHP
+
+########################################
+# 5) process_create.php (DB INSERT 수행)
+########################################
+cat > /var/www/html/process_create.php <<'PHP'
+<?php
+  require_once 'config.php';
+
+  $serverip = $_SERVER['SERVER_ADDR'];
+  $title = $_POST['title'] ?? '';
+  $description = $_POST['description'] ?? '';
+
+  $conn = new mysqli($DB_HOST, $DB_USER, $DB_PASS, $DB_NAME);
+  if ($conn->connect_error) {
+    die("DB connect failed: " . $conn->connect_error);
+  }
+
+  $stmt = $conn->prepare("INSERT INTO items (title, description, created) VALUES (?, ?, NOW())");
+  if (!$stmt) {
+    die("Prepare failed: " . $conn->error);
+  }
+
+  $stmt->bind_param("ss", $title, $description);
+  $ok = $stmt->execute();
+
+  $stmt->close();
+  $conn->close();
+?>
+<!doctype html>
+<html>
+  <head><meta charset="utf-8"><title>WEB</title></head>
+  <body>
+    <h1>WebServer IP is <?php echo $serverip ?></h1>
+    <p><?php echo $ok ? "INSERT OK" : "INSERT FAIL"; ?></p>
+    <a href="index.php">Back</a>
+  </body>
+</html>
+PHP
+
+########################################
+# 6) 권한/재시작
+########################################
+chown -R apache:apache /var/www/html || true
+systemctl restart httpd

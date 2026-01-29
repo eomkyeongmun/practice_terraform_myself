@@ -33,3 +33,25 @@ variable "db_name" {
   default = "appdb"
 }
 
+
+########################################
+# App(EC2 PHP)에서 사용할 DB 접속 변수 추가
+########################################
+
+# webapp이 접속할 DB 계정(실습: webuser)
+variable "app_db_user" {
+  type    = string
+  default = "webuser"
+}
+
+# webapp이 접속할 DB 비밀번호(민감정보)
+variable "app_db_pass" {
+  type      = string
+  sensitive = true
+}
+
+# webapp이 사용할 DB 이름(실습: webtest)
+variable "app_db_name" {
+  type    = string
+  default = "webtest"
+}
